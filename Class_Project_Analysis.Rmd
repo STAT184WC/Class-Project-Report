@@ -1,0 +1,167 @@
+---
+title: "Class Project Final "
+author: "Vishvendra Singh "
+date: "12/8"
+output: 
+  html_notebook:
+    fig_height: 7
+    fig_width: 10
+---
+
+
+```{r setup, include=FALSE}
+# Load required libraries
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+# Research Question: 
+# "What factors influence the number of international goals scored by footballers, and how do country demographics (or FIFA rankings) relate to goal-scoring performance?"
+
+---
+
+## Data Access
+
+### Load and Inspect Data
+```{r load-data, echo=TRUE, message=FALSE, warning=FALSE}
+# Load data sets
+footballers_data <- read_csv("C:/Users/Vishvendra/Downloads/footballers-with-50-international-goals-men.csv")
+fifa_rankings <- read_csv("C:/Users/Vishvendra/Downloads/fifa_ranking.csv")
+
+# Inspect data sets
+str(footballers_data)
+head(footballers_data)
+nrow(footballers_data)
+
+str(fifa_rankings)
+head(fifa_rankings)
+nrow(fifa_rankings)
+```
+
+---
+
+## Data Cleaning and Wrangling
+
+### Clean and Align Column Names
+```{r clean-data}
+# Clean and Align Column Names
+# Remove extra or invalid characters from the Country column
+footballers_data$Country <- gsub("[^[:alnum:] ]", "", footballers_data$Country)
+footballers_data$Country <- trimws(footballers_data$Country) # Remove leading/trailing whitespace
+
+# Rename columns for consistency 
+fifa_rankings <- fifa_rankings %>% rename(Country = country_full)
+
+# Inspect cleaned data
+head(footballers_data)
+head(fifa_rankings)
+
+```
+```{r include=FALSE}
+# Inspect the cleaned data
+head(footballers_data)
+```
+
+### Example Wrangling Operations:
+
+Filter: Select footballers with more than 70 goals.
+```{r}
+# Filter footballers with more than 70 goals
+top_scorers <- footballers_data %>% filter(Goals > 70)
+```
+Mutate: Create a new column for caps per goal
+```{r}
+# Add a new column for goals per match
+footballers_data <- footballers_data %>% mutate(caps_per_Goal = Goals / Caps)
+```
+
+Summarize: Calculate the average goals per match by continent.
+```{r}
+# Summarize the data to find average goals per match by confederation
+avg_goals_by_confederation <- footballers_data %>%
+  group_by(Confederation) %>%
+  summarise(Average_Goals_per_Match = mean(Goals_per_match, na.rm = TRUE))
+head(avg_goals_by_confederation)
+
+```
+Join: Merge the football data set with country demographics (or FIFA rankings).
+```{r wrangling}
+# Remove duplicates in the source data sets
+footballers_data <- footballers_data %>% distinct()
+fifa_rankings <- fifa_rankings %>% distinct()
+
+# Check and remove extra matches in fifa_rankings
+fifa_rankings <- fifa_rankings %>%
+  group_by(Country) %>%
+  summarise(across(everything(), first)) # Take the first match for each country
+
+# Merge data sets
+merged_data <- merge(footballers_data, fifa_rankings, by = "Country")
+
+# Remove duplicates after merging
+merged_data <- merged_data %>% distinct()
+
+# Inspect the cleaned merged data set
+head(merged_data)
+
+```
+
+---
+
+## Data Visualization
+
+### Visualization 1:Bar Plot of Goals by Country
+```{r bar-plot}
+ggplot(merged_data, aes(x = reorder(Country, Goals), y = Goals, fill = Country)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 10 Countries by Goals", x = "Country", y = "Goals") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "none")
+
+```
+
+### Visualization 2: Scatter Plot of Goals vs Matches with Countries
+```{r scatter-plot}
+ggplot(footballers_data, aes(x = Caps, y = Goals, color = Confederation, size = Goals_per_match)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Goals vs Caps by Confederation", x = "Caps", y = "Goals", size = "Goals per Match") +
+  theme_minimal()
+
+```
+
+### Visualization 3: Boxplot of Goals per Match by Confederation
+```{r boxplot}
+ggplot(footballers_data, aes(x = Confederation, y = Goals)) +
+  geom_boxplot() +
+  labs(title = "Goals by Confederation", x = "Confederation", y = "Goals") +
+  theme_minimal()
+```
+
+---
+
+## Findings
+Players from higher-ranked countries tend to have more caps but fewer goals per match.
+
+CONMEBOL and UEFA players generally achieve higher goals-per-match ratios than other confederations.
+
+The relationship between FIFA rankings and goals scored indicates that factors like player position and playing style may have significant influence.
+
+---
+
+## Challenges
+A significant challenge was cleaning the Nation column in footballers_data due to extra characters (\\xa0) that interfered with merging.
+
+Column name mismatches (Nation vs. country_full) required alignment for successful merging.
+
+
+---
+
+## Conclusion
+This analysis aims to explore the factors that influence the number of goals scored by footballers who have scored 50 or more international goals. 
+Understanding how country-level factors such as FIFA rankings or demographics relate to goal-scoring performance can provide insights into the development of football talent globally.
+A significant technical challenge encountered during the analysis was merging the football data set with country-specific data, as some countries had missing FIFA rankings.
+One significant finding is that players from countries with higher FIFA rankings tend to have more matches played but not necessarily more goals scored, indicating that other factors such as player position and playing style may play a role in goal-scoring performance.
+
+---
+
